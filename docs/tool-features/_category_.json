@@ -1,0 +1,8 @@
+{
+  "label": "ツールの機能",
+  "position": 8,
+  "link": {
+    "type": "generated-index",
+    "description": "進捗確認やメニュー操作など、その他の機能です。"
+  }
+}

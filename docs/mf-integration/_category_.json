@@ -1,0 +1,8 @@
+{
+  "label": "MoneyForwardとの連携",
+  "position": 7,
+  "link": {
+    "type": "generated-index",
+    "description": "確認済みの明細をMoneyForwardへ送信する手順です。"
+  }
+}

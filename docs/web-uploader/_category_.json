@@ -1,0 +1,8 @@
+{
+  "label": "証憑回収（Webアップローダー）",
+  "position": 4,
+  "link": {
+    "type": "generated-index",
+    "description": "顧問先や事務所が証憑をWebから提出するための手順です。"
+  }
+}

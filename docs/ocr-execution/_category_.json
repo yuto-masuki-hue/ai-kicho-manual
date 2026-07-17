@@ -1,0 +1,8 @@
+{
+  "label": "AI証憑読取（OCR実行）",
+  "position": 5,
+  "link": {
+    "type": "generated-index",
+    "description": "AIによる証憑読み取りの実行方法と処理フローです。"
+  }
+}

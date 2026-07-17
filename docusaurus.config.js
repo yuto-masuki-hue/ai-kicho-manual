@@ -96,6 +96,11 @@ const config = {
             label: '更新履歴',
             position: 'left',
           },
+           {
+            to: '/settings',
+            label: '設定',
+            position: 'right',
+          },
         ],
       },
       footer: {

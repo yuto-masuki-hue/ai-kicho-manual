@@ -5,8 +5,6 @@ title: マニュアル目次
 
 # AI記帳ツール マニュアル
 
-![画像](/img/uploads/A_clean_high-impact_Japanese_email_newsletter_hea-1783661012379.png)
-
 
 
 証憑の読み取りからMoneyForwardへの連携まで、AI記帳ツールの操作手順をまとめています。左のメニュー、または以下の目次からご覧ください。

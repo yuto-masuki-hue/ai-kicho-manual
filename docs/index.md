@@ -1,4 +1,5 @@
 
+![画像](/img/uploads/________-_2026_7_10__14.33.24.png)
 ---
 slug: /
 title: マニュアル目次
@@ -23,8 +24,6 @@ title: マニュアル目次
 - [顧問先フォルダを一括作成する（5階層構成）](./client-management/m21-create-folders)
 - [MoneyForwardと顧問先を連携する（OAuth認可）](./client-management/m22-mf-oauth)
 - [顧問先別の決済手段（登録サービス）を設定する](./client-management/m23-payment-methods)
-
-![画像](/img/uploads/favicon-180.png)
 
 ## 証憑回収（Webアップローダー）
 - [顧問先用アップロードURLを発行する](./web-uploader/m30-issue-url)

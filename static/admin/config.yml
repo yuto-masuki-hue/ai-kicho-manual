@@ -2,6 +2,7 @@ backend:
   name: github
   repo: yuto-masuki-hue/ai-kicho-manual
   branch: main
+  base_url: https://kicho-manual.vercel.app
 
 publish_mode: simple
 

@@ -87,8 +87,9 @@ const config = {
       navbar: {
         title: 'AI記帳ツール マニュアル',
         logo: {
-          alt: 'フジ相続税理士法人',
-          src: 'img/logo-440w.webp', // 後で自社ロゴ画像に差し替え可能
+          alt: '井上公認会計士事務所',
+          src: 'img/logo.svg', // 後で自社ロゴ画像に差し替え可能
+          width: 200,
         },
         items: [
           {

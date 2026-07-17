@@ -1,39 +1,66 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+
 :root {
-  --ifm-color-primary: #013e92;
-  --ifm-color-primary-dark: #013882;
-  --ifm-color-primary-darker: #013579;
-  --ifm-color-primary-darkest: #012c64;
-  --ifm-color-primary-light: #01449e;
-  --ifm-color-primary-lighter: #0148a8;
-  --ifm-color-primary-lightest: #0153c2;
+  --ifm-color-primary: #8ca74e;
+  --ifm-color-primary-dark: #7e9846;
+  --ifm-color-primary-darker: #768f42;
+  --ifm-color-primary-darkest: #617636;
+  --ifm-color-primary-light: #9ab65c;
+  --ifm-color-primary-lighter: #a2bd66;
+  --ifm-color-primary-lightest: #b7cc85;
 
   --ifm-font-family-base: 'Noto Sans JP', sans-serif;
-  --ifm-heading-font-family: 'Noto Sans JP', sans-serif;
+  --ifm-heading-font-family: 'Poppins', 'Noto Sans JP', sans-serif;
+  --ifm-heading-font-weight: 700;
   --ifm-heading-color: #1a1a1a;
 
-  --ifm-navbar-background-color: #ffffff;
-  --ifm-footer-background-color: #013e92;
-  --ifm-footer-color: #f5f5f5;
-  --ifm-footer-link-color: #f5f5f5;
+  --ifm-background-color: #ffffff;
+  --ifm-navbar-background-color: #fafaf9;
+  --ifm-footer-background-color: #dfe1da;
+  --ifm-footer-color: #333333;
+  --ifm-footer-link-color: #333333;
+
+  --ifm-menu-color-active: #6b8039;
 }
 
 [data-theme='dark'] {
-  --ifm-color-primary: #4d8fe8;
-  --ifm-background-color: #14171c;
+  --ifm-color-primary: #a2bd66;
+  --ifm-background-color: #14161080;
 }
-
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
 
 .navbar {
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-  border-bottom: 3px solid var(--ifm-color-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  border-bottom: 2px solid #8ca74e;
 }
 
-.navbar__logo img {
-  height: 32px;
+.navbar__title {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
 }
 
-.menu__link--active {
-  border-left: 3px solid var(--ifm-color-primary);
+h1, h2, h3 {
+  font-family: 'Poppins', 'Noto Sans JP', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.menu__link--active,
+.menu__link--active:hover {
+  background-color: rgba(140, 167, 78, 0.12);
+  border-left: 3px solid #8ca74e;
   font-weight: 600;
+}
+
+.footer {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.button--primary {
+  background-color: #8ca74e;
+  border-color: #8ca74e;
+}
+
+.button--primary:hover {
+  background-color: #7e9846;
+  border-color: #7e9846;
 }

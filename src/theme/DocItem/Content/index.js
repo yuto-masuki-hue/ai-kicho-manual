@@ -4,6 +4,7 @@ import {useDoc} from '@docusaurus/plugin-content-docs/client';
 import {signInWithPopup, onAuthStateChanged, signOut} from 'firebase/auth';
 import {httpsCallable} from 'firebase/functions';
 import {auth, provider, functions} from '@site/src/firebaseClient';
+import React, {useState, useEffect, useRef} from 'react';
 
 const REPO_OWNER = 'yuto-masuki-hue';
 const REPO_NAME = 'ai-kicho-manual';
@@ -20,6 +21,10 @@ export default function ContentWrapper(props) {
   const [loadingText, setLoadingText] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
+  const textareaRef = useRef(null);
 
   useEffect(() => {
     return onAuthStateChanged(auth, setUser);
@@ -69,6 +74,42 @@ export default function ContentWrapper(props) {
     setSaving(false);
   };
 
+  const handleImageSelect = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    setMessage('');
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const uploadImage = httpsCallable(functions, 'uploadImage');
+      const res = await uploadImage({fileName: file.name, base64Data: base64});
+      const imagePath = res.data.path;
+
+      // カーソル位置にMarkdown画像記法を挿入
+      const textarea = textareaRef.current;
+      const insertText = `\n![画像](${imagePath})\n`;
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const newText = text.slice(0, start) + insertText + text.slice(end);
+        setText(newText);
+      } else {
+        setText(text + insertText);
+      }
+      setMessage('✅ 画像を追加しました');
+    } catch (err) {
+      setMessage('❌ 画像の追加に失敗しました: ' + err.message);
+    }
+    setUploading(false);
+    e.target.value = '';
+  };
+
   return (
     <div>
       <div
@@ -109,7 +150,25 @@ export default function ContentWrapper(props) {
 
       {editing ? (
         <div>
+          <div style={{marginBottom: 8}}>
+            <input
+              type="file"
+              accept="image/*"
+              ref={fileInputRef}
+              onChange={handleImageSelect}
+              style={{display: 'none'}}
+            />
+            <button
+              onClick={() => fileInputRef.current.click()}
+              disabled={uploading}
+              className="button button--sm button--secondary"
+            >
+              {uploading ? 'アップロード中...' : '🖼️ 画像を追加'}
+            </button>
+          </div>
+          
           <textarea
+            ref={textareaRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={24}

@@ -274,3 +274,53 @@ exports.removeEditor = onCall(
       return {success: true};
     },
 );
+// ========================================
+// 画像のアップロード
+// ========================================
+exports.uploadImage = onCall(
+    {secrets: [GITHUB_TOKEN], region: "asia-northeast1"},
+    async (request) => {
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "ログインが必要です");
+      }
+      const email = request.auth.token.email;
+      if (!(await isEditor(email))) {
+        throw new HttpsError("permission-denied", "編集権限がありません");
+      }
+
+      const {fileName, base64Data} = request.data;
+      if (!fileName || !base64Data) {
+        throw new HttpsError("invalid-argument", "パラメータが不正です");
+      }
+
+      // ファイル名の安全化（英数字・.・-・_のみ許可）
+      const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const uploadFileName = `${Date.now()}-${safeName}`;
+      const path = `static/img/uploads/${uploadFileName}`;
+
+      const token = GITHUB_TOKEN.value();
+      const apiBase = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}`;
+      const headers = githubHeaders(token);
+
+      const putRes = await fetch(`${apiBase}/contents/${path}`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify({
+          message: `docs: 画像を追加 ${path} (by ${email})`,
+          content: base64Data,
+          branch: BRANCH,
+        }),
+      });
+
+      if (!putRes.ok) {
+        const errText = await putRes.text();
+        throw new HttpsError(
+            "internal", `画像のアップロードに失敗しました: ${errText}`,
+        );
+      }
+
+      // Docusaurusのstatic配下は "/img/uploads/xxx" というURLで公開される
+      const publicPath = `/img/uploads/${Date.now()}-${safeName}`;
+      return {success: true, path: `/img/uploads/${safeName}`, fullPath: publicPath};
+    },
+);

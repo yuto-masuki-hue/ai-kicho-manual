@@ -28,6 +28,12 @@ async function isEditor(email) {
   return doc.exists;
 }
 
+/**
+ * GitHub APIリクエスト用の共通ヘッダーを作成する
+ * @param {string} token GitHubのアクセストークン
+ * @return {object} リクエストヘッダー
+ */
+
 function githubHeaders(token) {
   return {
     "Authorization": `Bearer ${token}`,

@@ -1,3 +1,18 @@
+import fs from 'fs';
+import path from 'path';
+
+// docs/<folder>/_category_.json の label を「正」のデータとして読み込む。
+// 設定ページからカテゴリ名を変更すると、このファイルが書き換わる。
+function categoryLabel(folder, fallback) {
+  try {
+    const filePath = path.join(process.cwd(), 'docs', folder, '_category_.json');
+    const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    return data.label || fallback;
+  } catch (e) {
+    return fallback;
+  }
+}
+
 const sidebars = {
   manualSidebar: [
     {
@@ -7,49 +22,49 @@ const sidebars = {
     },
     {
       type: 'category',
-      label: 'ツールの初期設定',
+      label: categoryLabel('initial-setup', 'ツールの初期設定'),
       link: { type: 'generated-index' },
       items: ['initial-setup/m1-google-drive', 'initial-setup/m2-mf-client-setup', 'initial-setup/m3-gemini-api-key'],
     },
     {
       type: 'category',
-      label: '担当者・ユーザー管理',
+      label: categoryLabel('user-management', '担当者・ユーザー管理'),
       link: { type: 'generated-index' },
       items: ['user-management/m10-register-user', 'user-management/m11-save-credentials', 'user-management/m12-check-clients'],
     },
     {
       type: 'category',
-      label: '顧問先管理',
+      label: categoryLabel('client-management', '顧問先管理'),
       link: { type: 'generated-index' },
       items: ['client-management/m20-register-client', 'client-management/m21-create-folders', 'client-management/m22-mf-oauth', 'client-management/m23-payment-methods'],
     },
     {
       type: 'category',
-      label: '証憑回収（Webアップローダー）',
+      label: categoryLabel('web-uploader', '証憑回収（Webアップローダー）'),
       link: { type: 'generated-index' },
       items: ['web-uploader/m30-issue-url', 'web-uploader/m31-client-upload', 'web-uploader/m32-office-upload', 'web-uploader/m33-upload-history'],
     },
     {
       type: 'category',
-      label: 'AI証憑読取（OCR実行）',
+      label: categoryLabel('ocr-execution', 'AI証憑読取（OCR実行）'),
       link: { type: 'generated-index' },
       items: ['ocr-execution/m40-batch-ocr', 'ocr-execution/m41-folder-flow', 'ocr-execution/m42-error-retry'],
     },
     {
       type: 'category',
-      label: '読取結果（明細）管理',
+      label: categoryLabel('detail-management', '読取結果（明細）管理'),
       link: { type: 'generated-index' },
       items: ['detail-management/m50-sheet-overview', 'detail-management/m51-edit-details', 'detail-management/m52-check-original'],
     },
     {
       type: 'category',
-      label: 'MoneyForwardとの連携',
+      label: categoryLabel('mf-integration', 'MoneyForwardとの連携'),
       link: { type: 'generated-index' },
       items: ['mf-integration/m60-send-selected', 'mf-integration/m61-send-all', 'mf-integration/m62-account-mapping'],
     },
     {
       type: 'category',
-      label: 'ツールの機能',
+      label: categoryLabel('tool-features', 'ツールの機能'),
       link: { type: 'generated-index' },
       items: ['tool-features/m70-dashboard', 'tool-features/m71-menu-ocr'],
     },

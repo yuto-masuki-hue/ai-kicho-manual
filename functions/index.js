@@ -46,6 +46,20 @@ function githubHeaders(token) {
   };
 }
 
+/**
+ * YAMLのダブルクォート文字列として安全な形にエスケープする。
+ * バックスラッシュを先にエスケープしないと、ダブルクォートのエスケープと
+ * 衝突して不正なエスケープシーケンスになってしまう。
+ * @param {string} str エスケープしたい文字列
+ * @return {string} YAML内で安全な文字列
+ */
+function escapeYamlString(str) {
+  return String(str)
+      .replace(/\\/g, "\\\\")
+      .replace(/"/g, '\\"')
+      .replace(/\n/g, " ");
+}
+
 const SIDEBAR_ORDER_PATH = "data/sidebar-order.json";
 
 /**
@@ -429,7 +443,7 @@ exports.saveEdit = onCall(
       const changelogPath =
         `blog/${dateStr}-edit-${slug}-${now.getTime()}.md`;
       const changelogBody = `---
-title: "${(pageTitle || filePath).replace(/"/g, "'")} を更新しました"
+title: "${escapeYamlString(pageTitle || filePath)} を更新しました"
 date: ${now.toISOString()}
 authors: []
 ---
@@ -484,7 +498,7 @@ exports.addChangelogEntry = onCall(
             .slice(0, 50) || "update";
       const changelogPath = `blog/${dateStr}-${slug}-${now.getTime()}.md`;
       const changelogBody = `---
-title: "${title.replace(/"/g, "'")}"
+title: "${escapeYamlString(title)}"
 date: ${now.toISOString()}
 authors: []
 ---

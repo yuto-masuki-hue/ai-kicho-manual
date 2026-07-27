@@ -17,6 +17,19 @@ const REPO_OWNER = "yuto-masuki-hue";
 const REPO_NAME = "ai-kicho-manual";
 const BRANCH = "main";
 
+// サイドバーのカテゴリとして編集を許可するフォルダ一覧。
+// ここに無いフォルダ名は指定されても拒否する（不正なパス書き込み防止）。
+const SIDEBAR_CATEGORY_FOLDERS = [
+  "initial-setup",
+  "user-management",
+  "client-management",
+  "web-uploader",
+  "ocr-execution",
+  "detail-management",
+  "mf-integration",
+  "tool-features",
+];
+
 /**
  * 指定したメールアドレスが編集権限を持つか判定する
  * @param {string} email 判定したいメールアドレス
@@ -42,6 +55,112 @@ function githubHeaders(token) {
     "Content-Type": "application/json",
   };
 }
+
+// ========================================
+// サイドバーのカテゴリ名一覧を取得
+// ========================================
+exports.getSidebarCategories = onCall(
+    {secrets: [GITHUB_TOKEN], region: "asia-northeast1"},
+    async (request) => {
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "ログインが必要です");
+      }
+      const email = request.auth.token.email;
+      if (!(await isEditor(email))) {
+        throw new HttpsError("permission-denied", "編集権限がありません");
+      }
+
+      const token = GITHUB_TOKEN.value();
+      const apiBase = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}`;
+      const headers = githubHeaders(token);
+
+      const categories = await Promise.all(
+          SIDEBAR_CATEGORY_FOLDERS.map(async (folder) => {
+            const filePath = `docs/${folder}/_category_.json`;
+            const res = await fetch(
+                `${apiBase}/contents/${filePath}?ref=${BRANCH}`,
+                {headers, cache: "no-store"},
+            );
+            if (!res.ok) {
+              return {folder, label: "(取得失敗)"};
+            }
+            const fileData = await res.json();
+            const content = Buffer.from(
+                fileData.content, "base64",
+            ).toString("utf-8");
+            const json = JSON.parse(content);
+            return {folder, label: json.label || ""};
+          }),
+      );
+
+      return {categories};
+    },
+);
+
+// ========================================
+// サイドバーのカテゴリ名を更新
+// ========================================
+exports.updateSidebarCategoryLabel = onCall(
+    {secrets: [GITHUB_TOKEN], region: "asia-northeast1"},
+    async (request) => {
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "ログインが必要です");
+      }
+      const email = request.auth.token.email;
+      if (!(await isEditor(email))) {
+        throw new HttpsError("permission-denied", "編集権限がありません");
+      }
+
+      const {folder, label} = request.data;
+      if (!folder || !label || typeof label !== "string") {
+        throw new HttpsError("invalid-argument", "パラメータが不正です");
+      }
+      if (!SIDEBAR_CATEGORY_FOLDERS.includes(folder)) {
+        throw new HttpsError("invalid-argument", "不正なカテゴリです");
+      }
+
+      const token = GITHUB_TOKEN.value();
+      const apiBase = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}`;
+      const headers = githubHeaders(token);
+      const filePath = `docs/${folder}/_category_.json`;
+
+      const getRes = await fetch(
+          `${apiBase}/contents/${filePath}?ref=${BRANCH}`,
+          {headers, cache: "no-store"},
+      );
+      if (!getRes.ok) {
+        const errText = await getRes.text();
+        throw new HttpsError(
+            "internal", `元ファイルの取得に失敗しました: ${errText}`,
+        );
+      }
+      const fileData = await getRes.json();
+      const currentJson = JSON.parse(
+          Buffer.from(fileData.content, "base64").toString("utf-8"),
+      );
+
+      // labelだけを書き換え、position・linkなど他の項目はそのまま保持する
+      const updatedJson = {...currentJson, label};
+      const newContent = JSON.stringify(updatedJson, null, 2) + "\n";
+
+      const putRes = await fetch(`${apiBase}/contents/${filePath}`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify({
+          message: `docs: ${folder} のカテゴリ名を「${label}」に変更 (by ${email})`,
+          content: Buffer.from(newContent, "utf-8").toString("base64"),
+          sha: fileData.sha,
+          branch: BRANCH,
+        }),
+      });
+      if (!putRes.ok) {
+        const errText = await putRes.text();
+        throw new HttpsError("internal", `更新に失敗しました: ${errText}`);
+      }
+
+      return {success: true};
+    },
+);
 
 // ========================================
 // ページ本文の編集

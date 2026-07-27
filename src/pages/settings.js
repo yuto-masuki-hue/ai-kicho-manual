@@ -14,6 +14,12 @@ export default function SettingsPage() {
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState('');
 
+  // サイドバーのカテゴリ名編集用
+  const [categories, setCategories] = useState([]);
+  const [categoryLoadError, setCategoryLoadError] = useState('');
+  const [savingFolder, setSavingFolder] = useState('');
+  const [categoryMessage, setCategoryMessage] = useState('');
+
   useEffect(() => {
     return onAuthStateChanged(auth, (u) => {
       setUser(u);
@@ -34,9 +40,42 @@ export default function SettingsPage() {
   };
 
   useEffect(() => {
-    if (user) loadEditors();
+    if (user) {
+      loadEditors();
+      loadCategories();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  const loadCategories = async () => {
+    setCategoryLoadError('');
+    try {
+      const getSidebarCategories = httpsCallable(functions, 'getSidebarCategories');
+      const res = await getSidebarCategories();
+      setCategories(res.data.categories);
+    } catch (e) {
+      setCategoryLoadError('取得に失敗しました: ' + e.message);
+    }
+  };
+
+  const handleCategoryLabelChange = (folder, newLabel) => {
+    setCategories((prev) =>
+      prev.map((c) => (c.folder === folder ? {...c, label: newLabel} : c))
+    );
+  };
+
+  const saveCategoryLabel = async (folder, label) => {
+    setSavingFolder(folder);
+    setCategoryMessage('');
+    try {
+      const updateSidebarCategoryLabel = httpsCallable(functions, 'updateSidebarCategoryLabel');
+      await updateSidebarCategoryLabel({folder, label});
+      setCategoryMessage('✅ 保存しました。1〜2分後にサイトに反映されます。');
+    } catch (e) {
+      setCategoryMessage('❌ 保存に失敗しました: ' + e.message);
+    }
+    setSavingFolder('');
+  };
 
   const handleLogin = async () => {
     setMessage('');
@@ -157,6 +196,56 @@ export default function SettingsPage() {
                     追加
                   </button>
                 </div>
+
+                <hr style={{margin: '32px 0'}} />
+
+                <h2>左メニューの項目名を編集</h2>
+                <p style={{color: '#666'}}>
+                  サイドバーに表示されているカテゴリ名を変更できます（ページの並び順や中身は変わりません）。
+                </p>
+
+                {categoryLoadError && (
+                  <p style={{color: '#c0392b'}}>{categoryLoadError}</p>
+                )}
+
+                {!categoryLoadError && (
+                  <ul style={{listStyle: 'none', padding: 0}}>
+                    {categories.map(({folder, label}) => (
+                      <li
+                        key={folder}
+                        style={{
+                          display: 'flex',
+                          gap: 8,
+                          alignItems: 'center',
+                          marginBottom: 12,
+                        }}
+                      >
+                        <input
+                          type="text"
+                          value={label}
+                          onChange={(e) =>
+                            handleCategoryLabelChange(folder, e.target.value)
+                          }
+                          style={{
+                            flex: 1,
+                            padding: 8,
+                            border: '1px solid #ccc',
+                            borderRadius: 4,
+                          }}
+                        />
+                        <button
+                          onClick={() => saveCategoryLabel(folder, label)}
+                          disabled={savingFolder === folder}
+                          className="button button--sm button--primary"
+                        >
+                          {savingFolder === folder ? '保存中...' : '保存'}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {categoryMessage && <p style={{marginTop: 8}}>{categoryMessage}</p>}
               </>
             )}
 

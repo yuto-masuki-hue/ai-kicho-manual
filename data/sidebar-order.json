@@ -1,1 +1,10 @@
-
+[
+  "initial-setup",
+  "user-management",
+  "client-management",
+  "web-uploader",
+  "ocr-execution",
+  "detail-management",
+  "mf-integration",
+  "tool-features"
+]

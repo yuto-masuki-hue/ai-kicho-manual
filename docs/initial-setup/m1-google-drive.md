@@ -1,8 +1,7 @@
 ---
 sidebar_position: 1
 ---
-
-# Googleドライブの初期設定
+# testGoogleドライブの初期設定
 
 証憑格納用の親フォルダを作成し、フォルダIDをツールに設定する
 

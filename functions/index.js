@@ -17,18 +17,8 @@ const REPO_OWNER = "yuto-masuki-hue";
 const REPO_NAME = "ai-kicho-manual";
 const BRANCH = "main";
 
-// サイドバーのカテゴリとして編集を許可するフォルダ一覧。
-// ここに無いフォルダ名は指定されても拒否する（不正なパス書き込み防止）。
-const SIDEBAR_CATEGORY_FOLDERS = [
-  "initial-setup",
-  "user-management",
-  "client-management",
-  "web-uploader",
-  "ocr-execution",
-  "detail-management",
-  "mf-integration",
-  "tool-features",
-];
+// フォルダ名(スラッグ)として許可する形式。英小文字・数字・ハイフンのみ。
+const FOLDER_SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
 /**
  * 指定したメールアドレスが編集権限を持つか判定する
@@ -56,6 +46,61 @@ function githubHeaders(token) {
   };
 }
 
+const SIDEBAR_ORDER_PATH = "data/sidebar-order.json";
+
+/**
+ * data/sidebar-order.json を取得する（カテゴリ一覧の「正」データ）
+ * @param {string} token GitHubのアクセストークン
+ * @return {Promise<{order: string[], sha: string}>} 現在の並び順とファイルのsha
+ */
+async function getSidebarOrder(token) {
+  const apiBase = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}`;
+  const headers = githubHeaders(token);
+  const res = await fetch(
+      `${apiBase}/contents/${SIDEBAR_ORDER_PATH}?ref=${BRANCH}`,
+      {headers, cache: "no-store"},
+  );
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new HttpsError(
+        "internal", `並び順ファイルの取得に失敗しました: ${errText}`,
+    );
+  }
+  const fileData = await res.json();
+  const order = JSON.parse(
+      Buffer.from(fileData.content, "base64").toString("utf-8"),
+  );
+  return {order, sha: fileData.sha};
+}
+
+/**
+ * data/sidebar-order.json を書き換える
+ * @param {string} token GitHubのアクセストークン
+ * @param {string[]} order 新しい並び順
+ * @param {string} sha 更新前のファイルのsha
+ * @param {string} message コミットメッセージ
+ * @return {Promise<void>}
+ */
+async function putSidebarOrder(token, order, sha, message) {
+  const apiBase = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}`;
+  const headers = githubHeaders(token);
+  const content = JSON.stringify(order, null, 2) + "\n";
+  const res = await fetch(`${apiBase}/contents/${SIDEBAR_ORDER_PATH}`, {
+    method: "PUT",
+    headers,
+    body: JSON.stringify({
+      message,
+      content: Buffer.from(content, "utf-8").toString("base64"),
+      sha,
+      branch: BRANCH,
+    }),
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new HttpsError("internal", `並び順の更新に失敗しました: ${errText}`);
+  }
+}
+
 // ========================================
 // サイドバーのカテゴリ名一覧を取得
 // ========================================
@@ -74,8 +119,10 @@ exports.getSidebarCategories = onCall(
       const apiBase = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}`;
       const headers = githubHeaders(token);
 
+      const {order} = await getSidebarOrder(token);
+
       const categories = await Promise.all(
-          SIDEBAR_CATEGORY_FOLDERS.map(async (folder) => {
+          order.map(async (folder) => {
             const filePath = `docs/${folder}/_category_.json`;
             const res = await fetch(
                 `${apiBase}/contents/${filePath}?ref=${BRANCH}`,
@@ -115,11 +162,13 @@ exports.updateSidebarCategoryLabel = onCall(
       if (!folder || !label || typeof label !== "string") {
         throw new HttpsError("invalid-argument", "パラメータが不正です");
       }
-      if (!SIDEBAR_CATEGORY_FOLDERS.includes(folder)) {
+
+      const token = GITHUB_TOKEN.value();
+      const {order} = await getSidebarOrder(token);
+      if (!order.includes(folder)) {
         throw new HttpsError("invalid-argument", "不正なカテゴリです");
       }
 
-      const token = GITHUB_TOKEN.value();
       const apiBase = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}`;
       const headers = githubHeaders(token);
       const filePath = `docs/${folder}/_category_.json`;
@@ -157,6 +206,158 @@ exports.updateSidebarCategoryLabel = onCall(
         const errText = await putRes.text();
         throw new HttpsError("internal", `更新に失敗しました: ${errText}`);
       }
+
+      return {success: true};
+    },
+);
+
+// ========================================
+// サイドバーのカテゴリ並び順を変更
+// ========================================
+exports.updateSidebarOrder = onCall(
+    {secrets: [GITHUB_TOKEN], region: "asia-northeast1"},
+    async (request) => {
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "ログインが必要です");
+      }
+      const email = request.auth.token.email;
+      if (!(await isEditor(email))) {
+        throw new HttpsError("permission-denied", "編集権限がありません");
+      }
+
+      const {order: newOrder} = request.data;
+      if (!Array.isArray(newOrder) || newOrder.length === 0) {
+        throw new HttpsError("invalid-argument", "パラメータが不正です");
+      }
+
+      const token = GITHUB_TOKEN.value();
+      const {order: currentOrder, sha} = await getSidebarOrder(token);
+
+      // 中身の集合が現在と完全に一致する場合のみ許可する
+      // (追加・削除は別の関数で行う。並び替えのみここで許可)
+      const sortedCurrent = [...currentOrder].sort();
+      const sortedNew = [...newOrder].sort();
+      const isSameSet =
+        sortedCurrent.length === sortedNew.length &&
+        sortedCurrent.every((v, i) => v === sortedNew[i]);
+      if (!isSameSet) {
+        throw new HttpsError(
+            "invalid-argument",
+            "カテゴリの構成が変わっています（追加・削除はできません）",
+        );
+      }
+
+      await putSidebarOrder(
+          token, newOrder, sha,
+          `docs: サイドバーのカテゴリ並び順を変更 (by ${email})`,
+      );
+
+      return {success: true};
+    },
+);
+
+// ========================================
+// 新しいカテゴリを追加
+// ========================================
+exports.createSidebarCategory = onCall(
+    {secrets: [GITHUB_TOKEN], region: "asia-northeast1"},
+    async (request) => {
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "ログインが必要です");
+      }
+      const email = request.auth.token.email;
+      if (!(await isEditor(email))) {
+        throw new HttpsError("permission-denied", "編集権限がありません");
+      }
+
+      const {folder, label} = request.data;
+      if (!folder || !label) {
+        throw new HttpsError("invalid-argument", "パラメータが不正です");
+      }
+      if (!FOLDER_SLUG_RE.test(folder)) {
+        throw new HttpsError(
+            "invalid-argument",
+            "フォルダ名は半角英小文字・数字・ハイフンのみ使用できます",
+        );
+      }
+
+      const token = GITHUB_TOKEN.value();
+      const {order: currentOrder, sha} = await getSidebarOrder(token);
+      if (currentOrder.includes(folder)) {
+        throw new HttpsError(
+            "already-exists", "同じ名前のカテゴリが既にあります",
+        );
+      }
+
+      const apiBase = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}`;
+      const headers = githubHeaders(token);
+
+      // 1. _category_.json を作成
+      const categoryJson = {
+        label,
+        position: currentOrder.length + 1,
+        link: {
+          type: "generated-index",
+          description: "",
+        },
+      };
+      const categoryContent = JSON.stringify(categoryJson, null, 2) + "\n";
+      const categoryRes = await fetch(
+          `${apiBase}/contents/docs/${folder}/_category_.json`,
+          {
+            method: "PUT",
+            headers,
+            body: JSON.stringify({
+              message: `docs: 新しいカテゴリ「${label}」を追加 (by ${email})`,
+              content: Buffer.from(categoryContent, "utf-8").toString(
+                  "base64",
+              ),
+              branch: BRANCH,
+            }),
+          },
+      );
+      if (!categoryRes.ok) {
+        const errText = await categoryRes.text();
+        throw new HttpsError(
+            "internal", `カテゴリの作成に失敗しました: ${errText}`,
+        );
+      }
+
+      // 2. 空にならないよう、プレースホルダーのページを1つ作成
+      const pageContent = `---
+title: ${label}
+sidebar_position: 1
+---
+
+# ${label}
+
+ここに本文を書いてください。
+`;
+      const pageRes = await fetch(
+          `${apiBase}/contents/docs/${folder}/getting-started.md`,
+          {
+            method: "PUT",
+            headers,
+            body: JSON.stringify({
+              message: `docs: ${label} に最初のページを追加 (by ${email})`,
+              content: Buffer.from(pageContent, "utf-8").toString("base64"),
+              branch: BRANCH,
+            }),
+          },
+      );
+      if (!pageRes.ok) {
+        const errText = await pageRes.text();
+        throw new HttpsError(
+            "internal", `ページの作成に失敗しました: ${errText}`,
+        );
+      }
+
+      // 3. 並び順の一覧に新しいカテゴリを追加(末尾)
+      const newOrder = [...currentOrder, folder];
+      await putSidebarOrder(
+          token, newOrder, sha,
+          `docs: サイドバーに「${label}」を追加 (by ${email})`,
+      );
 
       return {success: true};
     },

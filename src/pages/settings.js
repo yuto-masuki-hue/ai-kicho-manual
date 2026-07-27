@@ -19,6 +19,12 @@ export default function SettingsPage() {
   const [categoryLoadError, setCategoryLoadError] = useState('');
   const [savingFolder, setSavingFolder] = useState('');
   const [categoryMessage, setCategoryMessage] = useState('');
+  const [reordering, setReordering] = useState(false);
+
+  // 新規カテゴリ追加用
+  const [newFolder, setNewFolder] = useState('');
+  const [newCategoryLabel, setNewCategoryLabel] = useState('');
+  const [creatingCategory, setCreatingCategory] = useState(false);
 
   useEffect(() => {
     return onAuthStateChanged(auth, (u) => {
@@ -75,6 +81,44 @@ export default function SettingsPage() {
       setCategoryMessage('❌ 保存に失敗しました: ' + e.message);
     }
     setSavingFolder('');
+  };
+
+  const moveCategory = async (index, direction) => {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= categories.length) return;
+
+    const reordered = [...categories];
+    [reordered[index], reordered[newIndex]] = [reordered[newIndex], reordered[index]];
+    setCategories(reordered);
+
+    setReordering(true);
+    setCategoryMessage('');
+    try {
+      const updateSidebarOrder = httpsCallable(functions, 'updateSidebarOrder');
+      await updateSidebarOrder({order: reordered.map((c) => c.folder)});
+      setCategoryMessage('✅ 並び順を保存しました。1〜2分後にサイトに反映されます。');
+    } catch (e) {
+      setCategoryMessage('❌ 並び順の保存に失敗しました: ' + e.message);
+      await loadCategories();
+    }
+    setReordering(false);
+  };
+
+  const createCategory = async () => {
+    if (!newFolder || !newCategoryLabel) return;
+    setCreatingCategory(true);
+    setCategoryMessage('');
+    try {
+      const createSidebarCategory = httpsCallable(functions, 'createSidebarCategory');
+      await createSidebarCategory({folder: newFolder.trim(), label: newCategoryLabel.trim()});
+      setNewFolder('');
+      setNewCategoryLabel('');
+      await loadCategories();
+      setCategoryMessage('✅ カテゴリを追加しました。1〜2分後にサイトに反映されます。');
+    } catch (e) {
+      setCategoryMessage('❌ 追加に失敗しました: ' + e.message);
+    }
+    setCreatingCategory(false);
   };
 
   const handleLogin = async () => {
@@ -210,7 +254,7 @@ export default function SettingsPage() {
 
                 {!categoryLoadError && (
                   <ul style={{listStyle: 'none', padding: 0}}>
-                    {categories.map(({folder, label}) => (
+                    {categories.map(({folder, label}, index) => (
                       <li
                         key={folder}
                         style={{
@@ -220,6 +264,26 @@ export default function SettingsPage() {
                           marginBottom: 12,
                         }}
                       >
+                        <div style={{display: 'flex', flexDirection: 'column', gap: 2}}>
+                          <button
+                            onClick={() => moveCategory(index, -1)}
+                            disabled={reordering || index === 0}
+                            className="button button--sm button--outline button--secondary"
+                            title="上に移動"
+                            style={{padding: '2px 8px', lineHeight: 1}}
+                          >
+                            ▲
+                          </button>
+                          <button
+                            onClick={() => moveCategory(index, 1)}
+                            disabled={reordering || index === categories.length - 1}
+                            className="button button--sm button--outline button--secondary"
+                            title="下に移動"
+                            style={{padding: '2px 8px', lineHeight: 1}}
+                          >
+                            ▼
+                          </button>
+                        </div>
                         <input
                           type="text"
                           value={label}
@@ -246,6 +310,44 @@ export default function SettingsPage() {
                 )}
 
                 {categoryMessage && <p style={{marginTop: 8}}>{categoryMessage}</p>}
+
+                <h3 style={{marginTop: 24}}>新しいカテゴリを追加</h3>
+                <p style={{color: '#666', fontSize: 14}}>
+                  一覧の一番下に追加されます（追加後、並び替えボタンで位置は変更できます）。
+                </p>
+                <div style={{display: 'flex', gap: 8, flexWrap: 'wrap'}}>
+                  <input
+                    type="text"
+                    value={newFolder}
+                    onChange={(e) => setNewFolder(e.target.value)}
+                    placeholder="フォルダ名（例: new-category、半角英数字とハイフンのみ）"
+                    style={{
+                      flex: '1 1 260px',
+                      padding: 8,
+                      border: '1px solid #ccc',
+                      borderRadius: 4,
+                    }}
+                  />
+                  <input
+                    type="text"
+                    value={newCategoryLabel}
+                    onChange={(e) => setNewCategoryLabel(e.target.value)}
+                    placeholder="表示名（例: 新しいカテゴリ）"
+                    style={{
+                      flex: '1 1 200px',
+                      padding: 8,
+                      border: '1px solid #ccc',
+                      borderRadius: 4,
+                    }}
+                  />
+                  <button
+                    onClick={createCategory}
+                    disabled={creatingCategory || !newFolder || !newCategoryLabel}
+                    className="button button--primary"
+                  >
+                    {creatingCategory ? '追加中...' : 'カテゴリを追加'}
+                  </button>
+                </div>
               </>
             )}
 

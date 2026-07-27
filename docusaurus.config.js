@@ -5,7 +5,7 @@ import {themes as prismThemes} from 'prism-react-renderer';
 const config = {
   title: 'AI記帳ツール マニュアル',
   tagline: '',
-  favicon: 'img/logo.png',
+  favicon: 'img/favicon.ico',
 
   future: {
     v4: true,
